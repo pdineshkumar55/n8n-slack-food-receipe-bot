@@ -1,0 +1,229 @@
+{
+  "name": "Slack Recipe Bot (OpenAI)",
+  "nodes": [
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.bot_id }}",
+              "operator": {
+                "operation": "notExists",
+                "singleValue": true,
+                "type": "string"
+              },
+              "rightValue": ""
+            },
+            {
+              "id": "c2",
+              "leftValue": "={{ $json.subtype }}",
+              "operator": {
+                "operation": "notExists",
+                "singleValue": true,
+                "type": "string"
+              },
+              "rightValue": ""
+            },
+            {
+              "id": "c3",
+              "leftValue": "={{ $json.text }}",
+              "operator": {
+                "operation": "notEmpty",
+                "singleValue": true,
+                "type": "string"
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "s2",
+      "name": "Ignore bot messages",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        224,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Recipe request from Slack: {{ $('Slack Trigger').item.json.text.replace(/<@[A-Z0-9]+>/g, '').trim() }}\n\nGive the full recipe following the template exactly.",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are an expert chef and friendly cooking assistant replying inside a Slack channel.\n\nThe user will send the name of a dish (sometimes with extra details like servings, diet, or spice level). Give a complete, reliable, home-cook-friendly recipe for it.\n\nThe user's message may be a full sentence, include greetings, or contain\nspelling mistakes (e.g. \"Hi, give me a receipe for panner tikka\").\nIdentify the dish they want from anywhere in the message, correct the\nspelling (panner → Paneer), and give the recipe for it.\n\nOnly if the message mentions no food or dish at all, reply exactly:\n\"Please type the name of a dish, e.g. Paneer Butter Masala or Chocolate Cake.\"\n\nRULES\n- If the dish has well-known regional versions, pick the most popular one and name it in the title.\n- Default to 4 servings unless the user specifies otherwise.\n- Use Indian-kitchen-friendly measurements: grams/ml plus cups/tsp/tbsp where helpful.\n- Be realistic with times. Prep time + cook time must add up to total time.\n- Mention common ingredient substitutes when an item may be hard to find.\n- If the message is not a dish or recipe request (e.g. just \"hi\"), reply only with: \"👋 Please type the name of a dish, e.g. *Paneer Butter Masala* or *Chocolate Cake*.\"\n- If the dish is unknown or ambiguous, suggest 2-3 closest dishes and ask which one they mean.\n- Include food-safety notes for meat, eggs or seafood where relevant.\n\nOUTPUT FORMAT (Slack mrkdwn only)\n- Use *single asterisks* for bold, _underscores_ for italics.\n- Never use #, ##, **double asterisks**, tables, or HTML.\n- Use \"•\" for bullets and \"1.\" \"2.\" for steps.\n- Keep the whole reply under 3,500 characters.\n- Follow this exact template:\n\n🍽️ *<Dish name>* _(<cuisine / regional style>)_\n<One-line description of the dish>\n\n⏱️ *Prep:* <x> min  |  *Cook:* <y> min  |  *Total:* <z> min\n👥 *Serves:* <n>  |  📊 *Difficulty:* <Easy / Medium / Hard>\n\n🛒 *Ingredients*\n_<Group name>_\n• <quantity> <ingredient> – <note if needed>\n\n🍳 *Equipment needed*\n• <item>\n\n👩‍🍳 *Method*\n1. <Step> _(<time for this step>)_\n\n💡 *Tips & substitutes*\n• <tip>\n\n🍛 *Serve with:* <suggestions>"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "s3",
+      "name": "Generate Recipe",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        448,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {
+          "maxTokens": 1500,
+          "temperature": 0.4
+        }
+      },
+      "id": "s4",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        448,
+        224
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "PFhRAf83T64rj58y",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0C9WDPL3V0",
+          "mode": "list",
+          "cachedResultName": "n8n-automation"
+        },
+        "text": "={{ $json.text }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "id": "s5",
+      "name": "Reply in Slack channel",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        784,
+        0
+      ],
+      "webhookId": "cd411ad8-b601-46b9-9437-dc9f7a05923d",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "T03DYHX08KpG7fLC",
+          "name": "Slack account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "trigger": [
+          "message"
+        ],
+        "channelId": {
+          "__rl": true,
+          "value": "C0C9WDPL3V0",
+          "mode": "list",
+          "cachedResultName": "n8n-automation"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.slackTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "c744fcf1-a6f7-4911-beed-530eac08d0b1",
+      "name": "Slack Trigger",
+      "webhookId": "ef40ff59-7637-4ed7-878e-d9495c962c36",
+      "credentials": {
+        "slackApi": {
+          "id": "t1L2mQAL006psEDy",
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Generate Recipe": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Reply in Slack channel",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Ignore bot messages": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Generate Recipe",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "index": 0,
+            "node": "Generate Recipe",
+            "type": "ai_languageModel"
+          }
+        ]
+      ]
+    },
+    "Slack Trigger": {
+      "main": [
+        [
+          {
+            "node": "Ignore bot messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timezone": "Asia/Kolkata"
+  },
+  "versionId": "891abd09-0ccb-4526-bbe4-f155a8b2ebaf",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4f7ba3e91c23a56f220423a40ea251845f171cdbae9231d26d58fbcb0e3a1c2b"
+  },
+  "nodeGroups": [],
+  "id": "IGghixayjAF3klel",
+  "tags": []
+}
